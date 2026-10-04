@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>유리블록 필터 생성기</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+        }
+
+        body {
+            background-color: #fce4ec;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .app-container {
+            display: flex;
+            flex-direction: row;
+            gap: 20px;
+            background: #fff;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 4px 4px 0px #e91e63, 8px 8px 0px rgba(0,0,0,0.1);
+            border: 2px solid #e91e63;
+            max-width: 1000px;
+            width: 100%;
+        }
+
+        /* 좌측 미리보기 영역 */
+        .preview-section {
+            flex: 1.2;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #f8f9fa;
+            border: 2px dashed #cfd8dc;
+            border-radius: 8px;
+            padding: 16px;
+            min-height: 420px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .canvas-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            max-width: 100%;
+            max-height: 500px;
+        }
+
+        canvas {
+            max-width: 100%;
+            max-height: 500px;
+            object-fit: contain;
+            border-radius: 4px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            display: none;
+        }
+
+        /* 중심점 조작 핸들 */
+        .center-handle {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #e91e63;
+            background: rgba(255, 255, 255, 0.85);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            cursor: move;
+            display: none;
+            box-shadow: 0 0 8px rgba(233, 30, 99, 0.6);
+            z-index: 10;
+        }
+
+        .center-handle::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 6px;
+            height: 6px;
+            background: #e91e63;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        /* 우측 컨트롤 영역 */
+        .control-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding: 8px;
+        }
+
+        .btn {
+            background-color: #f8bbd0;
+            color: #880e4f;
+            border: 2px solid #ec407a;
+            padding: 10px 16px;
+            font-weight: bold;
+            font-size: 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: center;
+            box-shadow: 2px 2px 0px #ec407a;
+        }
+
+        .btn:hover {
+            background-color: #f48fb1;
+            transform: translateY(-1px);
+            box-shadow: 3px 3px 0px #ec407a;
+        }
+
+        .btn:active {
+            transform: translateY(1px);
+            box-shadow: 1px 1px 0px #ec407a;
+        }
+
+        .btn-active {
+            background-color: #ec407a !important;
+            color: white !important;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #4a148c;
+        }
+
+        .control-label {
+            min-width: 80px;
+        }
+
+        .input-number {
+            width: 55px;
+            padding: 4px 6px;
+            border: 1.5px solid #f48fb1;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .input-number:focus {
+            border-color: #ec407a;
+        }
+
+        .input-color {
+            width: 50px;
+            height: 32px;
+            border: 1.5px solid #f48fb1;
+            border-radius: 4px;
+            padding: 2px;
+            cursor: pointer;
+            background-color: #fff;
+        }
+
+        .slider {
+            flex: 1;
+            accent-color: #ec407a;
+            cursor: pointer;
+        }
+
+        .size-inputs {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .size-inputs span {
+            color: #880e4f;
+            font-weight: bold;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 6px;
+        }
+
+        .btn-group .btn {
+            flex: 1;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .placeholder-text {
+            color: #90a4ae;
+            font-weight: 500;
+            font-size: 18px;
+            letter-spacing: -0.5px;
+        }
+
+        .toast-message {
+            position: fixed;
+            bottom: 25px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(233, 30, 99, 0.9);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            display: none;
+            z-index: 1000;
+            transition: opacity 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <!-- 좌측 미리보기 캔버스 -->
+    <div class="preview-section" id="previewArea">
+        <div class="canvas-wrapper" id="canvasWrapper">
+            <p class="placeholder-text" id="placeholder">미리보기</p>
+            <canvas id="mainCanvas"></canvas>
+            <div class="center-handle" id="centerHandle"></div>
+        </div>
+    </div>
+
+    <!-- 우측 제어판 -->
+    <div class="control-section">
+        <button class="btn" onclick="document.getElementById('fileInput').click()">사진 업로드</button>
+        <input type="file" id="fileInput" accept="image/*">
+
+        <div class="control-group">
+            <span class="control-label">크기 :</span>
+            <div class="size-inputs">
+                <input type="number" id="sizeW" class="input-number" value="60" min="20" max="250">
+                <span>X</span>
+                <input type="number" id="sizeH" class="input-number" value="60" min="20" max="250">
+            </div>
+        </div>
+
+        <div class="control-group">
+            <span class="control-label">기울기 :</span>
+            <input type="range" id="angleSlider" class="slider" min="0" max="90" value="0">
+            <input type="number" id="angleNum" class="input-number" min="0" max="90" value="0">
+        </div>
+
+        <div class="control-group">
+            <span class="control-label">줄눈 두께 :</span>
+            <input type="range" id="borderSlider" class="slider" min="1" max="15" value="4">
+            <input type="number" id="borderNum" class="input-number" min="1" max="15" value="4">
+        </div>
+
+        <div class="control-group">
+            <span class="control-label">줄눈 색상 :</span>
+            <input type="color" id="borderColorPicker" class="input-color" value="#ffffff">
+        </div>
+
+        <div class="control-group">
+            <span class="control-label">범위 :</span>
+            <input type="range" id="radiusSlider" class="slider" min="0" max="100" value="100">
+            <input type="number" id="radiusNum" class="input-number" min="0" max="100" value="100">
+        </div>
+
+        <div class="control-group">
+            <span class="control-label">난반사 :</span>
+            <input type="range" id="refractSlider" class="slider" min="0" max="100" value="50">
+            <input type="number" id="refractNum" class="input-number" min="0" max="100" value="50">
+        </div>
+
+        <div class="control-group">
+            <span class="control-label">진하기 :</span>
+            <input type="range" id="shadeSlider" class="slider" min="0" max="100" value="50">
+            <input type="number" id="shadeNum" class="input-number" min="0" max="100" value="50">
+        </div>
+
+        <div class="btn-group">
+            <button class="btn" id="btnCenterMove">패턴 중심 변경</button>
+            <button class="btn" id="btnDownload">사진 다운로드</button>
+        </div>
+    </div>
+</div>
+
+<div id="toastMessage" class="toast-message">사진을 먼저 업로드해주세요.</div>
+
+<script>
+    const fileInput = document.getElementById('fileInput');
+    const canvas = document.getElementById('mainCanvas');
+    const ctx = canvas.getContext('2d');
+    const placeholder = document.getElementById('placeholder');
+    const centerHandle = document.getElementById('centerHandle');
+    const canvasWrapper = document.getElementById('canvasWrapper');
+    const toastMessage = document.getElementById('toastMessage');
+
+    const sizeWInput = document.getElementById('sizeW');
+    const sizeHInput = document.getElementById('sizeH');
+    
+    const angleSlider = document.getElementById('angleSlider');
+    const angleNum = document.getElementById('angleNum');
+    
+    const borderSlider = document.getElementById('borderSlider');
+    const borderNum = document.getElementById('borderNum');
+    const borderColorPicker = document.getElementById('borderColorPicker');
+
+    const radiusSlider = document.getElementById('radiusSlider');
+    const radiusNum = document.getElementById('radiusNum');
+
+    const refractSlider = document.getElementById('refractSlider');
+    const refractNum = document.getElementById('refractNum');
+
+    const shadeSlider = document.getElementById('shadeSlider');
+    const shadeNum = document.getElementById('shadeNum');
+
+    const btnCenterMove = document.getElementById('btnCenterMove');
+    const btnDownload = document.getElementById('btnDownload');
+
+    let originalImage = null;
+    let centerX = 0.5;
+    let centerY = 0.5;
+    let isMovingCenter = false;
+    let isDraggingHandle = false;
+
+    function showToast(text) {
+        toastMessage.innerText = text;
+        toastMessage.style.display = 'block';
+        toastMessage.style.opacity = '1';
+        setTimeout(() => {
+            toastMessage.style.opacity = '0';
+            setTimeout(() => {
+                toastMessage.style.display = 'none';
+            }, 300);
+        }, 2000);
+    }
+
+    fileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const img = new Image();
+            img.onload = () => {
+                originalImage = img;
+                placeholder.style.display = 'none';
+                canvas.style.display = 'block';
+                render();
+            };
+            img.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
+
+    function syncInput(slider, number, callback) {
+        slider.addEventListener('input', () => {
+            number.value = slider.value;
+            callback();
+        });
+        number.addEventListener('input', () => {
+            let val = parseInt(number.value) || 0;
+            val = Math.max(parseInt(slider.min), Math.min(parseInt(slider.max), val));
+            slider.value = val;
+            callback();
+        });
+    }
+
+    syncInput(angleSlider, angleNum, render);
+    syncInput(borderSlider, borderNum, render);
+    syncInput(radiusSlider, radiusNum, render);
+    syncInput(refractSlider, refractNum, render);
+    syncInput(shadeSlider, shadeNum, render);
+    
+    borderColorPicker.addEventListener('input', render);
+    sizeWInput.addEventListener('input', render);
+    sizeHInput.addEventListener('input', render);
+
+    btnCenterMove.addEventListener('click', () => {
+        isMovingCenter = !isMovingCenter;
+        if (isMovingCenter) {
+            btnCenterMove.classList.add('btn-active');
+            if (originalImage) centerHandle.style.display = 'block';
+            updateHandlePosition();
+        } else {
+            btnCenterMove.classList.remove('btn-active');
+            centerHandle.style.display = 'none';
+        }
+    });
+
+    function updateHandlePosition() {
+        if (!canvas.width || !originalImage) return;
+        const rect = canvas.getBoundingClientRect();
+        const wrapperRect = canvasWrapper.getBoundingClientRect();
+        
+        const hX = (centerX * rect.width) + (rect.left - wrapperRect.left);
+        const hY = (centerY * rect.height) + (rect.top - wrapperRect.top);
+        
+        centerHandle.style.left = hX + 'px';
+        centerHandle.style.top = hY + 'px';
+    }
+
+    centerHandle.addEventListener('mousedown', (e) => {
+        isDraggingHandle = true;
+        e.stopPropagation();
+    });
+
+    window.addEventListener('mousemove', (e) => {
+        if (!isDraggingHandle || !originalImage) return;
+        const rect = canvas.getBoundingClientRect();
+        let x = (e.clientX - rect.left) / rect.width;
+        let y = (e.clientY - rect.top) / rect.height;
+
+        centerX = Math.max(0, Math.min(1, x));
+        centerY = Math.max(0, Math.min(1, y));
+
+        updateHandlePosition();
+        render();
+    });
+
+    window.addEventListener('mouseup', () => {
+        isDraggingHandle = false;
+    });
+
+    function hexToRgb(hex) {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? {
+            r: parseInt(result[1], 16),
+            g: parseInt(result[2], 16),
+            b: parseInt(result[3], 16)
+        } : { r: 255, g: 255, b: 255 };
+    }
+
+    // 오버레이(Overlay) 블렌딩으로 고정 적용
+    function blendOverlay(base, border, factor) {
+        const normBase = base / 255;
+        const normBorder = border / 255;
+        let blended;
+
+        if (normBase < 0.5) {
+            blended = 2 * normBase * (normBorder * factor + (1 - factor) * 0.5);
+        } else {
+            blended = 1.0 - 2 * (1.0 - normBase) * (1.0 - (normBorder * factor + (1 - factor) * 0.5));
+        }
+
+        return Math.min(255, Math.max(0, blended * 255));
+    }
+
+    function render() {
+        if (!originalImage) return;
+
+        canvas.width = originalImage.width;
+        canvas.height = originalImage.height;
+
+        const w = canvas.width;
+        const h = canvas.height;
+
+        const srcCanvas = document.createElement('canvas');
+        srcCanvas.width = w;
+        srcCanvas.height = h;
+        const srcCtx = srcCanvas.getContext('2d');
+        srcCtx.drawImage(originalImage, 0, 0);
+
+        const srcData = srcCtx.getImageData(0, 0, w, h);
+        const dstData = ctx.createImageData(w, h);
+
+        const bw = Math.max(10, parseInt(sizeWInput.value) || 60);
+        const bh = Math.max(10, parseInt(sizeHInput.value) || 60);
+        const angleRad = (parseInt(angleSlider.value) * Math.PI) / 180;
+        const radiusPct = parseInt(radiusSlider.value) / 100;
+        const borderRgb = hexToRgb(borderColorPicker.value);
+        
+        const borderThickness = Math.max(1, parseInt(borderSlider.value) || 4);
+        const refractMult = (parseInt(refractSlider.value) / 50); 
+        const shadeMult = (parseInt(shadeSlider.value) / 100) * 0.25; 
+
+        const cX = w * centerX;
+        const cY = h * centerY;
+        const maxRadius = (Math.sqrt(w * w + h * h) / 2) * radiusPct;
+
+        const cosA = Math.cos(-angleRad);
+        const sinA = Math.sin(-angleRad);
+
+        const srcPixels = srcData.data;
+        const dstPixels = dstData.data;
+
+        for (let y = 0; y < h; y++) {
+            for (let x = 0; x < w; x++) {
+                const idx = (y * w + x) * 4;
+
+                const distToCenter = Math.hypot(x - cX, y - cY);
+                let effectWeight = 1.0;
+                if (distToCenter > maxRadius) {
+                    effectWeight = 0.0;
+                } else if (maxRadius > 0) {
+                    const featherZone = maxRadius * 0.35; 
+                    if (distToCenter > maxRadius - featherZone) {
+                        effectWeight = (maxRadius - distToCenter) / featherZone;
+                    }
+                }
+
+                if (effectWeight <= 0) {
+                    dstPixels[idx] = srcPixels[idx];
+                    dstPixels[idx+1] = srcPixels[idx+1];
+                    dstPixels[idx+2] = srcPixels[idx+2];
+                    dstPixels[idx+3] = srcPixels[idx+3];
+                    continue;
+                }
+
+                const dx = x - cX;
+                const dy = y - cY;
+                const rx = dx * cosA - dy * sinA;
+                const ry = dx * sinA + dy * cosA;
+
+                let bx = (rx % bw + bw) % bw;
+                let by = (ry % bh + bh) % bh;
+
+                const distToEdgeX = Math.min(bx, bw - bx);
+                const distToEdgeY = Math.min(by, bh - by);
+                const edgeDist = Math.min(distToEdgeX, distToEdgeY);
+
+                const baseThreshold = Math.min(bw, bh) * 0.28;
+                const borderOffset = borderThickness * 1.5;
+                const edgeThreshold = baseThreshold + borderOffset;
+
+                let sampleX = x;
+                let sampleY = y;
+                let highlightAmount = 0;
+                let shadowAmount = 0;
+                let mortarFactor = 0;
+
+                if (edgeDist < edgeThreshold) {
+                    const normDist = edgeDist / edgeThreshold;
+                    const factor = Math.pow(1.0 - normDist, 1.4);
+                    
+                    // 1) 난반사 (굴절)
+                    const offsetX = (bx - bw / 2) * factor * 0.95 * refractMult;
+                    const offsetY = (by - bh / 2) * factor * 0.95 * refractMult;
+
+                    sampleX = Math.max(0, Math.min(w - 1, x + offsetX * effectWeight));
+                    sampleY = Math.max(0, Math.min(h - 1, y + offsetY * effectWeight));
+
+                    // 2) 은은한 입체감 및 음영
+                    highlightAmount = factor * shadeMult * 0.8 * effectWeight;
+                    shadowAmount = factor * shadeMult * 0.2 * effectWeight;
+
+                    // 3) 줄눈 오버레이 블렌딩 세기
+                    if (edgeDist < borderThickness) {
+                        mortarFactor = Math.pow(1.0 - (edgeDist / borderThickness), 1.2) * effectWeight;
+                    }
+                }
+
+                const sx = Math.floor(sampleX);
+                const sy = Math.floor(sampleY);
+                const sIdx = (sy * w + sx) * 4;
+
+                let r = srcPixels[sIdx];
+                let g = srcPixels[sIdx + 1];
+                let b = srcPixels[sIdx + 2];
+
+                // 고정된 오버레이(Overlay) 모드로 커스텀 줄눈 색상 합성
+                if (mortarFactor > 0) {
+                    r = blendOverlay(r, borderRgb.r, mortarFactor * 0.75);
+                    g = blendOverlay(g, borderRgb.g, mortarFactor * 0.75);
+                    b = blendOverlay(b, borderRgb.b, mortarFactor * 0.75);
+                }
+
+                // 음영 미세 감쇄
+                r = r * (1 - shadowAmount);
+                g = g * (1 - shadowAmount);
+                b = b * (1 - shadowAmount);
+
+                // 유리 광택 하이라이트 추가
+                r = r + (255 - r) * highlightAmount;
+                g = g + (255 - g) * highlightAmount;
+                b = b + (255 - b) * highlightAmount;
+
+                dstPixels[idx]     = Math.min(255, Math.max(0, r));
+                dstPixels[idx + 1] = Math.min(255, Math.max(0, g));
+                dstPixels[idx + 2] = Math.min(255, Math.max(0, b));
+                dstPixels[idx + 3] = srcPixels[sIdx + 3];
+            }
+        }
+
+        ctx.putImageData(dstData, 0, 0);
+        if (isMovingCenter) updateHandlePosition();
+    }
+
+    btnDownload.addEventListener('click', () => {
+        if (!originalImage) {
+            showToast('사진을 먼저 업로드해주세요.');
+            return;
+        }
+        const link = document.createElement('a');
+        link.download = 'glass_block_image.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+    });
+
+    window.addEventListener('resize', updateHandlePosition);
+</script>
+
+</body>
+</html>
